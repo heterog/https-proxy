@@ -1,3 +1,5 @@
 .idea
 *.exe
 https-proxy
+server.key
+server.pem

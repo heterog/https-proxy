@@ -20,6 +20,7 @@ func main() {
 	flag.IntVar(&uid, "uid", -1, "run as user id")
 	flag.IntVar(&gid, "gid", -1, "run as group")
 	flag.Parse()
+
 	if proto != "http" && proto != "https" {
 		log.Fatal("Protocol must be either http or https")
 	}
@@ -34,7 +35,6 @@ func main() {
 	server := &http.Server{
 		Addr: listen,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			if len(userList) > 0 && !basicAuth(w, r, userList) {
 				return
 			}

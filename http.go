@@ -12,11 +12,13 @@ func handleHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
+
 	defer resp.Body.Close()
 	copyHeader(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)
 }
+
 func copyHeader(dst, src http.Header) {
 	for k, vs := range src {
 		switch strings.ToLower(k) {

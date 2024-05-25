@@ -1,3 +1,3 @@
-module github.com/rchunping/https-proxy
+module github.com/heterog/https-proxy
 
-go 1.12
+go 1.21
