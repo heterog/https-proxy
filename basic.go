@@ -40,9 +40,8 @@ func basicAuth(w http.ResponseWriter, r *http.Request, users []User) bool {
 		}
 		w.WriteHeader(http.StatusForbidden)
 	} else {
-
+		w.Header().Set("Proxy-Authenticate", `Basic realm="Restricted"`)
 		w.WriteHeader(http.StatusProxyAuthRequired)
-		w.Header().Set("Proxy-Authenticate", `Basic realm="Http Proxy"`)
 	}
 
 	return false

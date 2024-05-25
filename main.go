@@ -6,15 +6,19 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"syscall"
 )
 
 func main() {
 	var pemPath, keyPath, proto, listen, users string
+	var uid, gid int
 	flag.StringVar(&pemPath, "pem", "server.pem", "path to pem file")
 	flag.StringVar(&keyPath, "key", "server.key", "path to key file")
 	flag.StringVar(&proto, "proto", "http", "Proxy protocol (http or https)")
 	flag.StringVar(&listen, "listen", ":8080", "listen address, default :8080")
 	flag.StringVar(&users, "users", "", "user:password list")
+	flag.IntVar(&uid, "uid", -1, "run as user id")
+	flag.IntVar(&gid, "gid", -1, "run as group")
 	flag.Parse()
 	if proto != "http" && proto != "https" {
 		log.Fatal("Protocol must be either http or https")
@@ -47,6 +51,37 @@ func main() {
 	if proto == "http" {
 		log.Fatal(server.ListenAndServe())
 	} else {
-		log.Fatal(server.ListenAndServeTLS(pemPath, keyPath))
+		// https://github.com/golang/go/blob/377646589d5fb0224014683e0d1f1db35e60c3ac/src/net/http/server.go#L3342
+		var err error
+		tlsConfig := tls.Config{}
+		tlsConfig.Certificates = make([]tls.Certificate, 1)
+		tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(pemPath, keyPath)
+		if err != nil {
+			log.Fatal("Failed to load x509 key, " + err.Error())
+		}
+
+		// Drop root privileges, and switch to nobody:nogroup (hardcoded as 65534:65534)
+		if gid > 0 {
+			err = syscall.Setgroups([]int{})
+			if err != nil {
+				log.Fatal("Failed to unset groups, " + err.Error())
+			}
+
+			err = syscall.Setgid(65534)
+			if err != nil {
+				log.Fatal("Failed to set new group, " + err.Error())
+			}
+		}
+
+		if uid > 0 {
+			err = syscall.Setuid(65534)
+			if err != nil {
+				log.Fatal("Failed to set new user, " + err.Error())
+			}
+		}
+
+		// Bring-it-up
+		server.TLSConfig = &tlsConfig
+		log.Fatal(server.ListenAndServeTLS("", ""))
 	}
 }
