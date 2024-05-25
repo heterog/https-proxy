@@ -48,9 +48,8 @@ func main() {
 		// TLSNextProto not-nil to disable HTTP/2.
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
-	if proto == "http" {
-		log.Fatal(server.ListenAndServe())
-	} else {
+
+	if proto == "https" {
 		// https://github.com/golang/go/blob/377646589d5fb0224014683e0d1f1db35e60c3ac/src/net/http/server.go#L3342
 		var err error
 		tlsConfig := tls.Config{}
@@ -60,28 +59,33 @@ func main() {
 			log.Fatal("Failed to load x509 key, " + err.Error())
 		}
 
-		// Drop root privileges, and switch to nobody:nogroup (hardcoded as 65534:65534)
-		if gid > 0 {
-			err = syscall.Setgroups([]int{})
-			if err != nil {
-				log.Fatal("Failed to unset groups, " + err.Error())
-			}
-
-			err = syscall.Setgid(65534)
-			if err != nil {
-				log.Fatal("Failed to set new group, " + err.Error())
-			}
-		}
-
-		if uid > 0 {
-			err = syscall.Setuid(65534)
-			if err != nil {
-				log.Fatal("Failed to set new user, " + err.Error())
-			}
-		}
-
-		// Bring-it-up
+		// The config may be loaded as root in openwrt + acme
 		server.TLSConfig = &tlsConfig
+	}
+
+	// Drop root privileges, and switch to new uid:gid
+	if gid > 0 {
+		err := syscall.Setgroups([]int{})
+		if err != nil {
+			log.Fatal("Failed to unset groups, " + err.Error())
+		}
+
+		err = syscall.Setgid(gid)
+		if err != nil {
+			log.Fatal("Failed to set new group, " + err.Error())
+		}
+	}
+
+	if uid > 0 {
+		err := syscall.Setuid(uid)
+		if err != nil {
+			log.Fatal("Failed to set new user, " + err.Error())
+		}
+	}
+
+	if proto == "http" {
+		log.Fatal(server.ListenAndServe())
+	} else {
 		log.Fatal(server.ListenAndServeTLS("", ""))
 	}
 }
